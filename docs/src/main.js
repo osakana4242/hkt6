@@ -45,6 +45,10 @@ class MathHelper {
 	static isLerpEnd(t) {
 		return 1 <= t;
 	}
+
+	static isInRange(v, min, max) {
+		return min <= v && v < max;
+	}
 }
 
 function assertEq(a, b) {
@@ -106,11 +110,12 @@ class Vector2Helper {
 	}
 }
 
-const State = {
-	S1: 1,
-	S2: 2,
-	S3: 3,
-	S4: 4,
+const StateId = {
+	S1I: 10,
+	S1: 11,
+	S2: 20,
+	S3I: 30,
+	S3: 40,
 }
 
 // MainScene クラスを定義
@@ -118,35 +123,84 @@ phina.define('MainScene', {
   superClass: 'DisplayScene',
   init: function(options) {
     this.superInit(options);
-    // 背景色を指定
-    this.backgroundColor = '#ffffff';
-    // ラベルを生成
-		{
-			const label = Label('Hello, phina.js!').addChildTo(this);
-			label.x = 0;
-			label.y = 0;
-			label.originX = 0;
-			label.originY = 0;
-			label.fontSize = 8;
-			label.fill = '#0000ff'; // 塗りつぶし色
-//    this.label.x = this.gridX.center(); // x 座標
-//    this.label.y = this.gridY.center(); // y 座標
-//    this.label.fill = 'white'; // 塗りつぶし色
-			this.label = label;
-		}
+		// 背景色を指定
+		this.backgroundColor = '#ffffff';
 
-
-		this.railBlock = [
-			[ 1, 0, 1 ],
-			[ 1, 1, 1 ],
-			[ 1, 1, 1 ],
-			[ 0, 1, 1 ],
-			[ 0, 1, 1 ],
-			[ 1, 1, 0 ],
-			[ 1, 1, 0 ],
-			[ 1, 1, 1 ],
-			[ 1, 1, 1 ],
+		this.baseRailBlocks = [
+			{
+				block: [
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+				]
+			},
+			{
+				block: [
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 0, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+				]
+			},
+			{
+				block: [
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+				]
+			},
+			{
+				block: [
+					[ 1, 0, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 0, 1, 1 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+				]
+			},
 		];
+		this.railBlock = [];
 
 		this.railPool = [];
 		this.rails = [];
@@ -169,10 +223,16 @@ phina.define('MainScene', {
 			smokeArr: [],
 			fireArr: [],
 			blastArr: [],
+			config: {
+				drawHeight: 8,
+			},
 			progress: {
-				state: State.S1,
+				state: StateId.S1I,
+				stateTime: 0,
 				elapsedTime: 0,
-				limitTime: 1000 * 60,
+				limitTime: 1000 * 100,
+				mapI: 0,
+				blockI: 0,
 			},
 		};
 
@@ -196,6 +256,22 @@ phina.define('MainScene', {
 			};
 		}
 
+    // ラベルを生成
+		{
+			const label = Label({
+				originX: 0.5,
+				originY: 0,
+				fontSize: 8,
+				lineHeight: 2,
+				align: 'left',
+				fill: '#ffffff',
+				stroke: '#000000',
+				strokeWidth: 4,
+			}).addChildTo(this);
+			label.x = 8;
+			label.y = 0;
+			this.label = label;
+		}
 		this.data = data;
   },
 
@@ -270,6 +346,16 @@ phina.define('MainScene', {
 		return appInput;
 	},
 
+	loadBlock: function(lines) {
+		const progress = this.data.progress;
+		const nextBlockI = MathHelper.wrap(progress.blockI, 0, this.baseRailBlocks.length);
+		progress.blockI++;
+		const nextBlock = this.baseRailBlocks[nextBlockI].block;
+		for (let i = 0, iMax = nextBlock.length; i < iMax; i++) {
+			lines.push(nextBlock[i]);
+		}
+	},
+
 	update: function() {
 		const appInput = this.getAppInput();
 
@@ -280,40 +366,94 @@ phina.define('MainScene', {
 
 		const progress = this.data.progress;
 		switch (progress.state) {
-			case State.S1:
+			case StateId.S1I:
 				progress.elapsedTime = 0;
 				player.score = 0;
 				player.railX = 1;
-				progress.state = State.S2;
+				{
+					var tx = (240 / 3) * (player.railX + 0.5);
+					player.sprite.y = 320 - 40;
+					player.sprite.x = tx;
+				}
+				progress.blockI = 0;
+				this.layer0.y = 0;
+				this.railBlock.splice(0, this.railBlock.length);
+				while (this.railBlock.length < 16) {
+					this.loadBlock(this.railBlock);
+				}
+				progress.stateTime = 0;
+				progress.state = StateId.S1;
 				break;
-			case State.S2:
-				progress.elapsedTime = MathHelper.clamp(progress.elapsedTime + this.app.ticker.deltaTime, 0, progress.limitTime);
+			case StateId.S1:
+				if (2000 < progress.stateTime) {
+					progress.state = StateId.S2;
+				}
+				break;
+			case StateId.S2:
+				// レール進行.
+				{
+					let railSpeed = 3;
+					if (player.sprite.y < 320 * 3 / 4) {
+						var rate = 320 * 3 / 4;
+						railSpeed += 4 * (rate - player.sprite.y) / rate;
+					}
+					const dy = railSpeed * 60 * this.app.ticker.deltaTime / 1000;
+//					this.layer0.y += dy;
+					player.score += dy;
+				}
+				// 操作.
+				{
+					var tx = (240 / 3) * (player.railX + 0.5);
+					var dx = (tx - player.sprite.x);
+					if (!Vector2Helper.isZero(appInput.dir)) {
+						if (dx * dx < 1) {
+							if (appInput.dir.x < 0) {
+								player.railX = MathHelper.clamp(player.railX - 1, 0, 3);
+							} else if (0 < appInput.dir.x) {
+								player.railX = MathHelper.clamp(player.railX + 1, 0, 3);
+							}
+						}
+						//player.sprite.y += appInput.dir.y * speed;
+						this.layer0.y -= appInput.dir.y * speed;
+						//player.sprite.rotation = appInput.dir.toDegree();
+					}
+					var deltaX = dx * 10 * this.app.ticker.deltaTime / 1000;
+					player.sprite.x += deltaX;
+				}
+
+				progress.elapsedTime = Math.min(progress.elapsedTime + this.app.ticker.deltaTime, progress.limitTime);
 				const t = progress.elapsedTime / progress.limitTime;
 				if (1 <= t) {
-					progress.state = State.S3;
+					progress.state = StateId.S3I;
+				}
+				if (this.app.keyboard.getKeyDown('r')) {
+					progress.state = StateId.S1I;
+				}
+				if (this.app.keyboard.getKeyDown('t')) {
+					progress.elapsedTime = progress.limitTime - 2000;
 				}
 				break;
-			case State.S3:
-				progress.state = State.S1;
+			case StateId.S3I:
+				progress.state = StateId.S3;
+				progress.stateTime = 0;
+				break;
+			case StateId.S3:
+				if (this.app.keyboard.getKeyDown('z')) {
+					progress.state = StateId.S1I;
+				}
 				break;
 		}
+		progress.stateTime += this.app.ticker.deltaTime;
 
-		var tx = (240 / 3) * (player.railX + 0.5);
-		var dx = (tx - player.sprite.x);
-		if (!Vector2Helper.isZero(appInput.dir)) {
-			if (dx * dx < 1) {
-				if (appInput.dir.x < 0) {
-					player.railX = MathHelper.clamp(player.railX - 1, 0, 3);
-				} else if (0 < appInput.dir.x) {
-					player.railX = MathHelper.clamp(player.railX + 1, 0, 3);
-				}
+
+		this.label.text = "";
+
+		{
+			const chip = this.getChip(player.railX, player.sprite.y);
+			if (chip === 0) {
+				this.label.text += 'x ';
 			}
-			player.sprite.y += appInput.dir.y * speed;
-			//player.sprite.rotation = appInput.dir.toDegree();
 		}
-		var deltaX = dx * 10 * this.app.ticker.deltaTime / 1000;
-		player.sprite.x += deltaX;
-
 
 		// レール.
 		{
@@ -328,21 +468,41 @@ phina.define('MainScene', {
 			}
 			this.rails.splice(0, this.rails.length);
 
-			let railSpeed = 3;
-			if (player.sprite.y < 320 * 3 / 4) {
-				var rate = 320 * 3 / 4;
-				railSpeed += 4 * (rate - player.sprite.y) / rate;
-			}
-			const dy = railSpeed * 60 * this.app.ticker.deltaTime / 1000;
-			this.layer0.y += dy;
-			player.score += dy;
+			const drawHeight = this.data.config.drawHeight;
+			const drawHeight2 = drawHeight * 2;
+			const yiOffset0 = parseInt(this.layer0.y / 48);
+			let yiOffset = yiOffset0;
+			if (drawHeight <= yiOffset) {
+				progress.mapI = yiOffset;
 
-			const yiOffset = parseInt(this.layer0.y / 48);
-			for (let yi = 0; yi < railBlock.length; yi++) {
+				const nextRailBlock = [];
+
+				while (nextRailBlock.length < drawHeight2) {
+					this.loadBlock(nextRailBlock);
+				}
+
+				for (let i = 0, iMax = railBlock.length - drawHeight; i < iMax; i++) {
+					nextRailBlock.push(railBlock[i]);
+				}
+				this.railBlock = railBlock = nextRailBlock;
+
+				this.layer0.y -= yiOffset0 * 48;
+				yiOffset = 0;
+			}
+			this.label.text += "" + yiOffset + " " + Math.round(this.layer0.y) + " ";
+
+			for (let yi = 0; yi < drawHeight2; yi++) {
 				for (let xi = 0; xi < 3; xi++) {
-					const yi2 = yi - yiOffset - 1;
-					const mapY = MathHelper.wrap(yi2, 0,  railBlock.length);
-					if (railBlock[mapY][xi] !== 1) continue;
+					const mapY = railBlock.length - drawHeight2 + yi - 1;
+					if (!MathHelper.isInRange(mapY, 0, railBlock.length)) continue; 
+					const chip = railBlock[mapY][xi];
+
+
+					const sprX = 240 / 3 * (xi + 0.5);
+					const sprY = 48 * (yi - drawHeight);
+					assertEq(chip, this.getChip(xi, sprY));
+
+					if (chip !== 1) continue;
 
 					let sprite = null;
 					if (railPool.length <= 0) {
@@ -355,105 +515,31 @@ phina.define('MainScene', {
 						sprite.visible = true;
 					}
 					rails.push(sprite);
-					sprite.x = 240 / 3 * (xi + 0.5);
-					sprite.y = 48 * yi2;
+					sprite.x = sprX;
+					sprite.y = sprY;
 				}
 			}
 		}
 
-
-		// smoke.
-		player.smokeTime = MathHelper.min(player.smokeTime + this.app.ticker.deltaTime, player.smokeInterval);
-		if (appInput.putSmoke) {
-			if (player.smokeInterval <= player.smokeTime) {
-				player.smokeTime = 0;
-				let v1 = Vector2();
-				v1.fromDegree(player.sprite.rotation + 180, 16);
-				v1.add(player.sprite);
-				this.createSmoke(v1);
-			}
-		}
-
-		this.label.text =
-			'TIME ' + (Math.max(0, progress.limitTime - progress.elapsedTime) / 10) +
-			' SCORE ' + Math.floor(player.score) +
+		this.label.text +=
+			'TIME ' + (Math.max(0, progress.limitTime - progress.elapsedTime) / 1000).toFixed(2) + " " +
+			'SCORE ' + Math.floor(player.score) +
 			'';
-
-		// fire
-		player.fireTime = MathHelper.min(player.fireTime + this.app.ticker.deltaTime, player.fireInterval);
-		if (appInput.putFire) {
-			if (player.fireInterval <= player.fireTime) {
-				player.fireTime = 0;
-				let v1 = Vector2();
-				v1.fromDegree(player.sprite.rotation, 32);
-				v1.add(player.sprite);
-				this.createFire(v1, 8);
-			}
-		}
-
-		{
-			const fireArr = this.data.fireArr;
-			const smokeArr = this.data.smokeArr;
-			const hitArr = [];
-			for (let i1 = 0; i1 < fireArr.length; i1++) {
-				const fire = fireArr[i1];
-				for (let i2 = 0; i2 < smokeArr.length; i2++) {
-					const smoke = smokeArr[i2];
-					if (!fire.sprite.hitTestElement(smoke.sprite)) continue;
-					hitArr.push({
-						"fire": fire,
-						"smoke": smoke,
-					});
-				}
-			}
-			for (let i = 0; i < hitArr.length; i++) {
-				const hit = hitArr[i];
-				const fire = hit.fire;
-				const smoke = hit.smoke;
-				if (!fire.isActive) continue;
-				if (!smoke.isActive) continue;
-				this.createFire(smoke.sprite, smoke.sprite.radius);
-				smoke.isActive = false;
-			}
-		}
-
-		{
-			const fireArr = this.data.fireArr;
-			for (let i = 0; i < fireArr.length; i++) {
-				const fire = fireArr[i];
-				FireHelper.update(this, fire);
-			}
-		}
-		{
-			const fireArr = this.data.fireArr;
-			for (let i = fireArr.length - 1; 0 <= i; i--) {
-				const fire = fireArr[i];
-				if (fire.isActive) continue;
-				fire.sprite.remove();
-				fireArr.splice(i, 1);
-			}
-		}
-		{
-			const smokeArr = this.data.smokeArr;
-			for (let i = 0; i < smokeArr.length; i++) {
-				const smoke = smokeArr[i];
-				SmokeHelper.update(this, smoke);
-			}
-		}
-		{
-			const smokeArr = this.data.smokeArr;
-			for (let i = smokeArr.length - 1; 0 <= i; i--) {
-				const smoke = smokeArr[i];
-				if (smoke.isActive) continue;
-				smoke.sprite.remove();
-				smokeArr.splice(i, 1);
-			}
-		}
 
 		// sort
 		this.layer1.children.sort((a, b) => {
 			return a.priority - b.priority;
 		});
+	},
+
+	getChip: function(railX, y) {
+		const railBlock = this.railBlock;
+		const drawHeight = this.data.config.drawHeight;
+		const yi = Math.floor(y / 48) + drawHeight;
+		const mapY = railBlock.length - (this.data.config.drawHeight * 2) + yi - 1;
+		if (!MathHelper.isInRange(mapY, 0, railBlock.length)) return 0; 
+		const chip = railBlock[mapY][railX];
+		return chip;
 	},
 });
 
