@@ -106,6 +106,13 @@ class Vector2Helper {
 	}
 }
 
+const State = {
+	S1: 1,
+	S2: 2,
+	S3: 3,
+	S4: 4,
+}
+
 // MainScene クラスを定義
 phina.define('MainScene', {
   superClass: 'DisplayScene',
@@ -121,7 +128,7 @@ phina.define('MainScene', {
 			label.originX = 0;
 			label.originY = 0;
 			label.fontSize = 8;
-			label.fill = 'white'; // 塗りつぶし色
+			label.fill = '#0000ff'; // 塗りつぶし色
 //    this.label.x = this.gridX.center(); // x 座標
 //    this.label.y = this.gridY.center(); // y 座標
 //    this.label.fill = 'white'; // 塗りつぶし色
@@ -162,6 +169,11 @@ phina.define('MainScene', {
 			smokeArr: [],
 			fireArr: [],
 			blastArr: [],
+			progress: {
+				state: State.S1,
+				elapsedTime: 0,
+				limitTime: 1000 * 60,
+			},
 		};
 
 		{
@@ -174,6 +186,7 @@ phina.define('MainScene', {
 			sprite.addChildTo(this.layer1);
 
 			data.player = {
+				score: 0,
 				railX: 0,
 				sprite: sprite,
 				smokeInterval: 200,
@@ -263,6 +276,28 @@ phina.define('MainScene', {
 		const player = this.data.player;
 		const speed1 = appInput.putSmoke ? 100 : 200;
 		const speed = speed1 * this.app.ticker.deltaTime / 1000;
+
+
+		const progress = this.data.progress;
+		switch (progress.state) {
+			case State.S1:
+				progress.elapsedTime = 0;
+				player.score = 0;
+				player.railX = 1;
+				progress.state = State.S2;
+				break;
+			case State.S2:
+				progress.elapsedTime = MathHelper.clamp(progress.elapsedTime + this.app.ticker.deltaTime, 0, progress.limitTime);
+				const t = progress.elapsedTime / progress.limitTime;
+				if (1 <= t) {
+					progress.state = State.S3;
+				}
+				break;
+			case State.S3:
+				progress.state = State.S1;
+				break;
+		}
+
 		var tx = (240 / 3) * (player.railX + 0.5);
 		var dx = (tx - player.sprite.x);
 		if (!Vector2Helper.isZero(appInput.dir)) {
@@ -280,6 +315,7 @@ phina.define('MainScene', {
 		player.sprite.x += deltaX;
 
 
+		// レール.
 		{
 			var railBlock = this.railBlock;
 			var rails = this.rails;
@@ -297,7 +333,9 @@ phina.define('MainScene', {
 				var rate = 320 * 3 / 4;
 				railSpeed += 4 * (rate - player.sprite.y) / rate;
 			}
-			this.layer0.y += railSpeed * 60 * this.app.ticker.deltaTime / 1000;
+			const dy = railSpeed * 60 * this.app.ticker.deltaTime / 1000;
+			this.layer0.y += dy;
+			player.score += dy;
 
 			const yiOffset = parseInt(this.layer0.y / 48);
 			for (let yi = 0; yi < railBlock.length; yi++) {
@@ -336,7 +374,10 @@ phina.define('MainScene', {
 			}
 		}
 
-		this.label.text = "S " + player.smokeTime + " F " + player.fireTime;
+		this.label.text =
+			'TIME ' + (Math.max(0, progress.limitTime - progress.elapsedTime) / 10) +
+			' SCORE ' + Math.floor(player.score) +
+			'';
 
 		// fire
 		player.fireTime = MathHelper.min(player.fireTime + this.app.ticker.deltaTime, player.fireInterval);
@@ -429,3 +470,4 @@ phina.main(function() {
   // アプリケーション実行
   app.run();
 });
+
