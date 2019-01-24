@@ -53,7 +53,8 @@ class MathHelper {
 
 function assertEq(a, b) {
 	if (a === b) return;
-	throw "assert " + a + " vs " + b;
+	const n = 0;
+//	throw "assert " + a + " vs " + b;
 }
 
 assertEq(0, MathHelper.wrap(3, 0, 3));
@@ -126,6 +127,20 @@ phina.define('MainScene', {
 		// 背景色を指定
 		this.backgroundColor = '#ffffff';
 
+		this.baseRailBlocks1 = [
+			{
+				block: [
+					[ 0, 1, 0 ],
+					[ 0, 0, 1 ],
+					[ 1, 1, 0 ],
+					[ 1, 0, 1 ],
+					[ 0, 1, 0 ],
+					[ 0, 0, 1 ],
+					[ 1, 1, 0 ],
+					[ 1, 0, 1 ],
+				]
+			},
+		];
 		this.baseRailBlocks = [
 			{
 				block: [
@@ -272,6 +287,22 @@ phina.define('MainScene', {
 			label.y = 0;
 			this.label = label;
 		}
+		{
+			const label = Label({
+				originX: 0.5,
+				originY: 0.5,
+				fontSize: 8,
+				lineHeight: 2,
+				align: 'center',
+				fill: '#ffffff',
+				stroke: '#000000',
+				strokeWidth: 4,
+			}).addChildTo(this);
+			label.x = 240 * 0.5;
+			label.y = 320 * 0.5;
+			label.text = "hkt6";
+			this.centerLabel = label;
+		}
 		this.data = data;
   },
 
@@ -367,6 +398,7 @@ phina.define('MainScene', {
 		const progress = this.data.progress;
 		switch (progress.state) {
 			case StateId.S1I:
+				this.centerLabel.text = "READY";
 				progress.elapsedTime = 0;
 				player.score = 0;
 				player.railX = 1;
@@ -386,6 +418,7 @@ phina.define('MainScene', {
 				break;
 			case StateId.S1:
 				if (2000 < progress.stateTime) {
+					this.centerLabel.text = "";
 					progress.state = StateId.S2;
 				}
 				break;
@@ -398,7 +431,7 @@ phina.define('MainScene', {
 						railSpeed += 4 * (rate - player.sprite.y) / rate;
 					}
 					const dy = railSpeed * 60 * this.app.ticker.deltaTime / 1000;
-//					this.layer0.y += dy;
+					this.layer0.y += dy;
 					player.score += dy;
 				}
 				// 操作.
@@ -413,12 +446,18 @@ phina.define('MainScene', {
 								player.railX = MathHelper.clamp(player.railX + 1, 0, 3);
 							}
 						}
-						//player.sprite.y += appInput.dir.y * speed;
-						this.layer0.y -= appInput.dir.y * speed;
+						player.sprite.y += appInput.dir.y * speed;
+						//this.layer0.y -= appInput.dir.y * speed;
 						//player.sprite.rotation = appInput.dir.toDegree();
 					}
 					var deltaX = dx * 10 * this.app.ticker.deltaTime / 1000;
 					player.sprite.x += deltaX;
+				}
+				{
+					const chip = this.getChip(player.railX, player.sprite.y);
+					if (chip === 0) {
+						progress.state = StateId.S3I;
+					}
 				}
 
 				progress.elapsedTime = Math.min(progress.elapsedTime + this.app.ticker.deltaTime, progress.limitTime);
@@ -435,6 +474,7 @@ phina.define('MainScene', {
 				break;
 			case StateId.S3I:
 				progress.state = StateId.S3;
+				this.centerLabel.text = "GAME OVER\nPRESS Z KEY";
 				progress.stateTime = 0;
 				break;
 			case StateId.S3:
@@ -470,7 +510,7 @@ phina.define('MainScene', {
 
 			const drawHeight = this.data.config.drawHeight;
 			const drawHeight2 = drawHeight * 2;
-			const yiOffset0 = parseInt(this.layer0.y / 48);
+			const yiOffset0 = this.getCellPosY(this.layer0.y);
 			let yiOffset = yiOffset0;
 			if (drawHeight <= yiOffset) {
 				progress.mapI = yiOffset;
@@ -500,7 +540,6 @@ phina.define('MainScene', {
 
 					const sprX = 240 / 3 * (xi + 0.5);
 					const sprY = 48 * (yi - drawHeight);
-					assertEq(chip, this.getChip(xi, sprY));
 
 					if (chip !== 1) continue;
 
@@ -532,11 +571,18 @@ phina.define('MainScene', {
 		});
 	},
 
+	getCellPosY: function(a, b) {
+		const c = 48;
+		const geta = 100;
+		return Math.floor((a + c * geta)/ c) - geta;
+	},
+
 	getChip: function(railX, y) {
+		y -= this.layer0.y;
 		const railBlock = this.railBlock;
 		const drawHeight = this.data.config.drawHeight;
-		const yi = Math.floor(y / 48) + drawHeight;
-		const mapY = railBlock.length - (this.data.config.drawHeight * 2) + yi - 1;
+		const yi = this.getCellPosY(y) + drawHeight;
+		const mapY = railBlock.length - (this.data.config.drawHeight * 2) + yi; // - 1;
 		if (!MathHelper.isInRange(mapY, 0, railBlock.length)) return 0; 
 		const chip = railBlock[mapY][railX];
 		return chip;
