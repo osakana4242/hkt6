@@ -198,7 +198,7 @@ phina.define('MainScene', {
 					[ 0, 1, 0 ],
 					[ 0, 1, 0 ],
 					[ 0, 1, 0 ],
-					[ 0, 1, 0 ],
+					[ 1, 1, 1 ],
 				]
 			},
 			{
@@ -220,7 +220,7 @@ phina.define('MainScene', {
 					[ 1, 1, 0 ],
 					[ 1, 1, 0 ],
 					[ 1, 1, 0 ],
-					[ 1, 1, 0 ],
+					[ 1, 1, 1 ],
 				]
 			},
 			{
@@ -247,7 +247,7 @@ phina.define('MainScene', {
 			},
 			{
 				block: [
-					[ 1, 0, 1 ],
+					[ 1, 1, 1 ],
 					[ 1, 1, 1 ],
 					[ 1, 1, 1 ],
 					[ 0, 1, 1 ],
@@ -482,7 +482,7 @@ phina.define('MainScene', {
 				progress.state = StateId.S1;
 				break;
 			case StateId.S1:
-				if (1000 < progress.stateTime) {
+				if (2000 < progress.stateTime) {
 					this.centerLabel.text = "";
 					progress.state = StateId.S2;
 				}
