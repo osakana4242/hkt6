@@ -185,6 +185,50 @@ phina.define('MainScene', {
 					[ 1, 1, 1 ],
 					[ 1, 1, 1 ],
 					[ 1, 1, 1 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+					[ 0, 1, 0 ],
+				]
+			},
+			{
+				block: [
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+					[ 1, 1, 0 ],
+				]
+			},
+			{
+				block: [
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
 					[ 0, 1, 1 ],
 					[ 0, 1, 1 ],
 					[ 0, 1, 1 ],
@@ -245,7 +289,7 @@ phina.define('MainScene', {
 				state: StateId.S1I,
 				stateTime: 0,
 				elapsedTime: 0,
-				limitTime: 1000 * 100,
+				limitTime: 1000 * 60,
 				mapI: 0,
 				blockI: 0,
 			},
@@ -379,7 +423,9 @@ phina.define('MainScene', {
 
 	loadBlock: function(lines) {
 		const progress = this.data.progress;
-		const nextBlockI = MathHelper.wrap(progress.blockI, 0, this.baseRailBlocks.length);
+		// const nextBlockI = MathHelper.wrap(progress.blockI, 0, this.baseRailBlocks.length);
+		const nextBlockI = parseInt(Math.random() * this.baseRailBlocks.length);//  MathHelper.wrap(progress.blockI, 0, this.baseRailBlocks.length);
+
 		progress.blockI++;
 		const nextBlock = this.baseRailBlocks[nextBlockI].block;
 		for (let i = 0, iMax = nextBlock.length; i < iMax; i++) {
@@ -410,6 +456,25 @@ phina.define('MainScene', {
 				progress.blockI = 0;
 				this.layer0.y = 0;
 				this.railBlock.splice(0, this.railBlock.length);
+				this.railBlock = [
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+					[ 1, 1, 1 ],
+				];
 				while (this.railBlock.length < 16) {
 					this.loadBlock(this.railBlock);
 				}
@@ -417,7 +482,7 @@ phina.define('MainScene', {
 				progress.state = StateId.S1;
 				break;
 			case StateId.S1:
-				if (2000 < progress.stateTime) {
+				if (1000 < progress.stateTime) {
 					this.centerLabel.text = "";
 					progress.state = StateId.S2;
 				}
@@ -529,7 +594,7 @@ phina.define('MainScene', {
 				this.layer0.y -= yiOffset0 * 48;
 				yiOffset = 0;
 			}
-			this.label.text += "" + yiOffset + " " + Math.round(this.layer0.y) + " ";
+//			this.label.text += "" + yiOffset + " " + Math.round(this.layer0.y) + " ";
 
 			for (let yi = 0; yi < drawHeight2; yi++) {
 				for (let xi = 0; xi < 3; xi++) {
